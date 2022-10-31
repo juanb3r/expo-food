@@ -1,13 +1,15 @@
 import React from 'react';
-import { Text, View, StyleSheet, Image, Button, FlatList } from 'react-native';
+import { Text, View, TextInput, SafeAreaView, Image, Button, FlatList } from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import {VEA_STAGE, VEA_API_BASE_URL} from '@env'
 
+import { styles } from './styles/styles';
+
 import foodImages from './assets/plato-de-ensalada.png';
 import errorImages from './assets/error.png';
-
+import logo from './assets/logos/4.png';
 
 export default class App extends React.Component {
 
@@ -19,7 +21,10 @@ export default class App extends React.Component {
       imageBase64: null,
       error: null,
       loading: false,
-      data: null
+      data: null,
+      screen: 'home',
+      subject: null,
+      message: null,
     }
   }
 
@@ -86,17 +91,81 @@ export default class App extends React.Component {
     });
   }
 
+  sendMessage = async () => {
+
+    this.setState({loading: true});
+
+    axios.post(`${VEA_API_BASE_URL}/${VEA_STAGE}/report`, {
+      subject: this.state.subject,
+      message: this.state.message
+    })
+    .then(res => {
+      console.log(JSON.stringify(res));
+
+      this.setState({
+        loading: false,
+        data: res.data,
+        subject: null,
+        message: null,
+      });
+    })
+    .catch(error => {
+      console.log(error);
+      this.setState({
+        error: error
+      });
+    });
+  }
+
   onButtonPress = () => {
     this.setState(
       {
         loading: false,
         data: null,
-        error: null
+        error: null,
+        screen: 'home'
       }
     );
   };
 
-  InitialScreen = () => {
+  HomeScreen = () => {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Bienvenido</Text>
+        <Text style={styles.subtitle}>Verificador Estado de Alimento</Text>
+        <Image
+          source={logo}
+          style={styles.image}
+        />
+        <Text style={styles.subtitle}>Menú</Text>
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonContainer}>
+            <Button
+              color='black' 
+              title='Verificar'
+              onPress={() => {
+                this.setState({ screen: 'checker' }) 
+              }
+            }
+            />
+          </View>
+          <View style={styles.buttonContainer}>
+            <Button
+              color='black' 
+              title='Reportar'
+              onPress={() => {
+                  this.setState({ screen: 'reporter' }) 
+                }
+              }
+            />
+          </View>
+          
+        </View>
+      </View>
+    );
+  }
+
+  CheckerFoodScreen = () => {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Pruebalo</Text>
@@ -121,20 +190,67 @@ export default class App extends React.Component {
               onPress={this.openCameraPickerAsync}
             />
           </View>
+          <View style={styles.buttonContainer}>
+              <Button
+                color='black'
+                title='Volver'
+                onPress={this.onButtonPress}
+              />
+          </View>
         </View>
       </View>
     );
   }
 
+  ReporterScreen = () => {
+
+    return (
+
+      <SafeAreaView style={styles.text_container}>
+        <Text style={styles.subtitle}>Asunto:</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={subject => this.setState({ subject: subject })}
+          value={this.state.subject}
+          placeholder="Inserte asunto"
+        />
+        <Text style={styles.subtitle}>Mensaje:</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={message => this.setState({ message: message })}
+          value={this.state.message}
+          placeholder="Inserte su reporte"
+        />
+        <View style={styles.buttonContainer}>
+          <Button
+            color='black' 
+            title='Enviar'
+            onPress={this.sendMessage}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+            <Button
+              color='black'
+              title='Volver'
+              onPress={this.onButtonPress}
+            />
+        </View>
+      </SafeAreaView>
+      
+    );
+  };
+
   render () {
     if (this.state.data) {
       return (
         <View style={styles.container}>
-          <FlatList
+          <View style={styles.buttonContainer}>
+          <FlatList 
             data={this.state.data}
             renderItem={
               ({item}) => <Text style={styles.subtitle}>{item.Name}</Text>}
           />
+          </View>
           <View style={styles.buttonContainer}>
           <Button
               color='black' 
@@ -166,29 +282,18 @@ export default class App extends React.Component {
     if (this.state.loading) {
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Verificando</Text>
+          <Text style={styles.title}>Enviando</Text>
         </View>
       );
     }
-    return this.InitialScreen();
+    if (this.state.screen === 'home') {
+      return this.HomeScreen();
+    }
+    else if (this.state.screen === 'checker') {
+      return this.CheckerFoodScreen();
+    }
+    else if (this.state.screen === 'reporter') {
+      return this.ReporterScreen();
+    }
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'orange',
-  },
-  buttonContainer: {
-    justifyContent: 'center',
-    flexDirection: 'row',
-    margin: 10,
-    flexWrap: 'wrap',
-  },
-  subtitle: { fontSize: 15, color: 'white' },
-  title: { fontSize: 30, color: 'white' },
-  subtitle: { fontSize: 20, color: 'white' },
-  image: { width: 200, height: 200 },
-});
